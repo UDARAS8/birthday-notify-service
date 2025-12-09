@@ -2,23 +2,45 @@ package main
 
 import (
 	"blazeisclone/birthday-notifier/internal"
+	"fmt"
 	"log"
 
 	"github.com/robfig/cron/v3"
 )
 
+func checkAndNotifyBirthdays() {
+	birthdays, err := internal.FetchBirthdays()
+	if err != nil {
+		log.Printf("Error fetching birthdays: %v", err)
+		return
+	}
+
+	todayBirthdays := internal.GetTodayBirthdays(birthdays)
+
+	if len(todayBirthdays) == 0 {
+		log.Println("No birthdays today")
+		return
+	}
+
+	for _, birthday := range todayBirthdays {
+		subject := "Happy Birthday"
+		message := fmt.Sprintf(
+			"Happy Birthday %s, We hope you have a wonderful day filled with joy and celebration!",
+			birthday.Name,
+		)
+
+		internal.SendMail(birthday.Name, birthday.Email, subject, message)
+		log.Printf("Sent birthday notification to %s (%s)", birthday.Name, birthday.Email)
+	}
+}
+
 func main() {
 	scheduler := cron.New()
-	cronExpression := "* * * * *"
+	cronExpression := "0 12 * * *"
 
-	toName := "Person Name"
-	toEmail := "person@example.com"
-	subject := "Reminder for Birthday"
-	message := "Reminder for Birthday"
+	checkAndNotifyBirthdays()
 
-	scheduler.AddFunc(cronExpression, func() {
-		internal.SendMail(toName, toEmail, subject, message)
-	})
+	scheduler.AddFunc(cronExpression, checkAndNotifyBirthdays)
 
 	scheduler.Start()
 
